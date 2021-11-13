@@ -9,6 +9,6 @@ Folders will be made next to the code directory with links to keep code synced.
 
 Deployment means just changing the code in /code/
 
-After running the script you will need to still setup conf.py and initializeDatabase.py and run initializeDatabase.py.
+After running the script you will need to still setup `conf.py` and `initializeDatabase.py` and run `initializeDatabase.py`.
 
 Then you will need to restart the daemon which will be the username.
