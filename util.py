@@ -127,8 +127,8 @@ def parseBadges(badgeString):
     return finalMap
 
 # Return true if the user is a mod or broadcaster.
-def isUserMod(badgeMap):
-    return bool(badgeMap["mod"] == "1" or "broadcaster" in badgeMap["badges"])
+def isUserMod(badgeMap, username, conf):
+    return bool(badgeMap["mod"] == "1" or "broadcaster" in badgeMap["badges"]) or username.lower() == conf["OWNER"]
 
 # -------------------------------------------------
 # Msc
@@ -153,7 +153,7 @@ def sendMaintenance(sock, channel, message):
 # -------------------------------------------------
 # Admin messages. Returns true if an admin message was handled.
 def isAdminCommand(badgeMap, username, message, sock, conn, conf):
-    if not isUserMod(badgeMap):
+    if not isUserMod(badgeMap, username, conf):
         return False
     if message[0] != conf["PREFIX"]:
         return False

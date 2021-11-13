@@ -3,18 +3,18 @@ import sqlite3
 # CONFIG HERE
 # ############################
 SETTINGS = {
-	"CHANNEL": "",      		# lowercase string
+	"CHANNEL": "",		# lowercase string
 	"GENERATE_ON": "25",		# number
 	"ALLOW_MENTIONS": "True",	# true/false
 	"UNIQUE": "True",			# true/false
 	"SEND_MESSAGES": "True",	# true/false
 	"CULL_OVER": "1500",		# number
 	"PREFIX": "-",				# single character
-	"OWNER": ""		            # Owner of the bot, lowercase.
+	"OWNER": ""		# Owner of the bot, lowercase.
 }
 
 IGNORED_USERS = [
-	"moobot", "streamlabs", "nightbot", "fossabot"
+	"moobot", "streamlabs", "nightbot", "fossabot", "streamelements"
 ]
 
 BLACKLISTED_WORDS = [
@@ -102,24 +102,24 @@ CREATE TABLE IF NOT EXISTS "mods" (
 # Set initial data.
 for k in SETTINGS:
 	cursor.execute('''
-	INSERT INTO config (key,value)
+	INSERT OR REPLACE INTO config (key,value)
 	VALUES (?,?)
 	''', (k,SETTINGS[k]))
 
 for k in IGNORED_USERS:
 	cursor.execute('''
-	INSERT INTO ignored_users (username)
+	INSERT OR REPLACE INTO ignored_users (username)
 	VALUES (?)
 	''', (k,))
 
 for k in BLACKLISTED_WORDS:
 	cursor.execute('''
-	INSERT INTO blacklist (word)
+	INSERT OR REPLACE INTO blacklist (word)
 	VALUES (?)
 	''', (k,))
 
 cursor.execute('''
-INSERT INTO mods (username) VALUES (?)
+INSERT OR REPLACE INTO mods (username) VALUES (?)
 ''', (SETTINGS["CHANNEL"],))
 
 cursor.execute('''
