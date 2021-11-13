@@ -27,7 +27,7 @@ sock.send(f"CAP REQ :twitch.tv/commands\n".encode('utf-8'))
 # We want to see user tags.
 sock.send(f"CAP REQ :twitch.tv/tags\n".encode('utf-8'))
 
-print("Connected", Conf.nickname, ".")
+print("Connected", Conf.nickname + ".")
 
 message_count = 0
   # Main loop
@@ -42,6 +42,7 @@ while True:
         # Actual message that isn't empty.
         elif len(resp) > 0:
             try:
+                print(resp)
                 chatMessageDict = util.getChatDict(resp)
                 # If we have a chat message.
                 if chatMessageDict != None:
@@ -55,35 +56,51 @@ while True:
                     if util.isUserIgnored(username, ignoredUsers):
                         continue
 
-                    if util.isAdminCommand(badgeMap, message, sock, conn, confDict):
+                    if util.isAdminCommand(badgeMap, username, message, sock, conn, confDict):
                         continue
 
-                    if confDict["SEND_MESSAGES"].lower() == "false":
+                    if not util.getConfBool(confDict, "SEND_MESSAGES"):
+                        continue
+                    
+                    if util.hasBlacklistedWord(conn, message):
                         continue
 
                     if not util.listMeetsThresholdToSave(message):
                         continue
                     
+                    if not util.getConfBool(confDict, "ALLOW_MENTIONS"):
+                        message = util.removeMentions(message)
+                    
                     datalayer.insertChatRecord(conn, badgeMap["id"], chatMessageDict["username"], message)
                     message_count += 1
                     # Generate Markov.
-                    if (message_count % int(confDict["GENERATE_ON"])) == 0:
+                    if message_count >= int(confDict["GENERATE_ON"]):
                         # Generate message.
-                        util.generateMessage(conn, confDict)
+                        markovString = util.generateMessage(conn, confDict)
+                        if markovString != None and util.getConfBool(confDict, "SEND_MESSAGES"):
+                            util.sendMessage(sock, channel, markovString)
                         # Check if messages exceed threshold.
                         util.cleanLogsIfNeeded(conn, confDict)
                         # Reset count.
                         message_count = 0
                 
+                # Check if it's a whisper.
+                whisperInfo = util.isWhisper(resp)
+                if whisperInfo != None:
+                    util.handleWhisper(sock, conn, confDict, whisperInfo)
+                    continue
+
                 # Check for deleted messages.
                 deletedMessageId = util.getDeleteAction(resp)
                 if deletedMessageId != None:
                     datalayer.deleteChatRecord(conn, deletedMessageId)
+                    continue
                 
                 # Check for user being timed out.
                 timedOutUser = util.getTimeoutAction(resp)
                 if timedOutUser != None:
                     datalayer.deleteChatRecords(conn, timedOutUser)
+                    continue
 
             except Exception as e:
                 print("Inner")

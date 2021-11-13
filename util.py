@@ -4,7 +4,6 @@ import datalayer
 import adminCommands
 import markovify
 
-# TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
 # -------------------------------------------------
 # Markov Duties
 
@@ -12,28 +11,58 @@ import markovify
 def generateMessage(conn, conf):
     chatMessages = datalayer.getAllChatMessages(conn)
     logString = buildLogString(chatMessages)
-    markovString = markovFromString(logString)
-    return
+    markovString = markovFromString(logString, conf, conn)
+    return markovString
 
 # Build a string markovify can work with from DB object.
 def buildLogString(chatMessages):
-    return
+    logString = ""
+    for msg in chatMessages:
+        logString += msg + "\n"
+    return logString
 
 # Generate a markov string.
-def markovFromString(inputString):
+def markovFromString(inputString, conf, conn):
     text_model = markovify.NewlineText(inputString, state_size=2)
-    return
+    foundUniqueMessage = False
+    if getConfBool(conf, "UNIQUE"):
+        generatedMessages = datalayer.getGeneratedMessages(conn)
+        tries = 0
+        while not foundUniqueMessage and tries < 20:
+            testMessage = text_model.make_sentence(tries=1000)
+            if not (testMessage in generatedMessages):
+                foundUniqueMessage = True
+            tries += 1
+    else:
+        testMessage = text_model.make_sentence(tries=1000)
+    if foundUniqueMessage and testMessage != None:
+        datalayer.addGeneratedMessage(conn, testMessage)
+    return testMessage
 
-# TODO: Add the generated messages table to prevent duplicates.
-# TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
 # -------------------------------------------------
 # Message parsing
+
+# Remove mentions.
+def removeMentions(message):
+    return re.sub(r"@\S+", "", message)
+
+# Check for blacklisted words.
+def hasBlacklistedWord(conn, message):
+    blacklistList = datalayer.getBlacklistedWords(conn)
+    blacklist = set(blacklistList)
+    for word in blacklist:
+        if re.search(r"\b" + word, message, re.IGNORECASE):
+            return True
+    return False
 
 # Check if logs need to be cleaned.
 def cleanLogsIfNeeded(conn, conf):
     max_size = int(conf["CULL_OVER"])
-    if datalayer.getMessageCount(conn) >= max_size:
-        datalayer.deleteFirstX(conn, max_size//2)
+    message_count = datalayer.getMessageCount(conn)
+    if message_count >= max_size:
+        deleteNumber = message_count - (max_size//2)
+        datalayer.deleteFirstX(conn, deleteNumber)
+        datalayer.deleteGeneratedMessages(conn)
 
 # Check if the message is mostly spam.
 def listMeetsThresholdToSave(message):
@@ -47,7 +76,7 @@ def listMeetsThresholdToSave(message):
     if wF == 0:
         return False
     uniqueness = (pF/wF) * float(100)
-    return (uniqueness >= 50.0)
+    return (uniqueness > 50.0)
 
 # Parse chat message into dict, return None if not a chat.
 chatMessageRegex = r'(@.*):(.*)\!.*@.*\.tmi\.twitch\.tv PRIVMSG #(.*) :(.*)'
@@ -56,8 +85,7 @@ def getChatDict(resp):
     if regex == None:
         return None
     badge, username, channel, message = regex.groups()
-    chatDict = {"badge": badge, "username": username, "channel": channel, "message": message}
-    return chatDict
+    return {"badge": badge, "username": username, "channel": channel, "message": message}
 
 # Parse message deletion.
 deleteMessageRegex = r'@.*target-msg-id=(.*);.*:tmi\.twitch\.tv CLEARMSG #(.*) :(.*)'
@@ -76,6 +104,15 @@ def getTimeoutAction(resp):
         return None
     userId, channel, username = regex.groups()
     return username.strip()
+
+# Check if the bot is being whispered.
+whisperRegex = r'(@.*):(.*)\!.*@.*\.tmi\.twitch\.tv WHISPER .* :(.*)'
+def isWhisper(message):
+    regex = re.search(whisperRegex, message)
+    if regex == None:
+        return None
+    badges, user, message = regex.groups()
+    return {"username": user.strip(), "message": message.strip()}
 
 # -------------------------------------------------
 # User badge parsing.
@@ -96,6 +133,12 @@ def isUserMod(badgeMap):
 # -------------------------------------------------
 # Msc
 
+# Check conf value and return bool.
+def getConfBool(conf, value):
+    if conf[value].lower() == "true":
+        return True
+    return False
+
 # Check if a username is ignored.
 def isUserIgnored(user, ignoredUsers):
     return user.strip() in ignoredUsers
@@ -109,14 +152,36 @@ def sendMaintenance(sock, channel, message):
 
 # -------------------------------------------------
 # Admin messages. Returns true if an admin message was handled.
-def isAdminCommand(badgeMap, message, sock, conn, conf):
+def isAdminCommand(badgeMap, username, message, sock, conn, conf):
     if not isUserMod(badgeMap):
         return False
     if message[0] != conf["PREFIX"]:
         return False
+    datalayer.addMod(conn, username)
     commands = message.split()
     try: 
         commandMethod = getattr(adminCommands, commands[0][1:])
         return commandMethod(commands, sock, conn, conf)
     except Exception as e:
         return False
+
+def handleWhisper(sock, conn, conf, whisperInfo):
+    mods = datalayer.getMods(conn)
+    if whisperInfo["username"] in mods:
+        # Check prefix.
+        if whisperInfo["message"][0] != conf["PREFIX"]:
+            return False
+        commands = whisperInfo["message"].split()
+        # Check that a channel was supplied.
+        if len(commands) < 2:
+            return False
+        # Check last arg for correct channel.
+        if commands[len(commands)-1].lower() != conf["CHANNEL"]:
+            return False
+        commands.pop()
+        try: 
+            commandMethod = getattr(adminCommands, commands[0][1:])
+            return commandMethod(commands, sock, conn, conf)
+        except Exception as e:
+            print(e)
+            return False
