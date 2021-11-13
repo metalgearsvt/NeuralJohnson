@@ -11,3 +11,5 @@ Initialize the database
 
 Run the bot
 > python markovChain.py
+
+The folder /util has a script and basic outline for running multiple bots.
