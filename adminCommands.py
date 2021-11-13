@@ -80,14 +80,17 @@ def blacklist(args, sock, conn, conf):
     args.pop(0)
     word = ' '.join(args)
     datalayer.addBlacklistWord(conn, word)
+    util.sendMaintenance(sock, conf["CHANNEL"], "Added a blacklisted word.")
     return True
 
 def unblacklist(args, sock, conn, conf):
     args.pop(0)
     word = ' '.join(args)
     datalayer.deleteBlacklistedWord(conn, word)
+    util.sendMaintenance(sock, conf["CHANNEL"], "Removed a blacklisted word.")
     return True
 
 def wipemods(args, sock, conn, conf):
     datalayer.deleteMods(conn)
+    util.sendMaintenance(sock, conf["CHANNEL"], "Mod cache cleared.")
     return True
