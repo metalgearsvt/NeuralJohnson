@@ -22,5 +22,9 @@ Restart=always
 [Install]
 WantedBy=multi-user.target" > /lib/systemd/system/$user.service;
 
+cd /home/ubuntu/markov/$user
+ln ../code/* .;
+ln -s ../code/markovify .;
+
 systemctl enable $user.service;
 systemctl start $user.service;
