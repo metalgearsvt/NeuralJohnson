@@ -1,1 +1,0 @@
-put conf.py and initializeDatabase.py next to it
