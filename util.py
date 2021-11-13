@@ -160,7 +160,7 @@ def isAdminCommand(badgeMap, username, message, sock, conn, conf):
     datalayer.addMod(conn, username)
     commands = message.split()
     try: 
-        commandMethod = getattr(adminCommands, commands[0][1:])
+        commandMethod = getattr(adminCommands, commands[0][1:].lower())
         return commandMethod(commands, sock, conn, conf)
     except Exception as e:
         return False
@@ -180,7 +180,7 @@ def handleWhisper(sock, conn, conf, whisperInfo):
             return False
         commands.pop()
         try: 
-            commandMethod = getattr(adminCommands, commands[0][1:])
+            commandMethod = getattr(adminCommands, commands[0][1:].lower())
             return commandMethod(commands, sock, conn, conf)
         except Exception as e:
             print(e)

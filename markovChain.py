@@ -42,7 +42,6 @@ while True:
         # Actual message that isn't empty.
         elif len(resp) > 0:
             try:
-                print(resp)
                 chatMessageDict = util.getChatDict(resp)
                 # If we have a chat message.
                 if chatMessageDict != None:

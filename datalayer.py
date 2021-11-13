@@ -156,3 +156,10 @@ def addMod(conn, username):
     conn.commit()
     cur.close()
     return
+
+def deleteMods(conn):
+    sql = '''DELETE FROM mods WHERE 1=1'''
+    cur = conn.cursor()
+    cur.execute(sql)
+    conn.commit()
+    cur.close()

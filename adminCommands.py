@@ -87,3 +87,7 @@ def unblacklist(args, sock, conn, conf):
     word = ' '.join(args)
     datalayer.deleteBlacklistedWord(conn, word)
     return True
+
+def wipemods(args, sock, conn, conf):
+    datalayer.deleteMods(conn)
+    return True
