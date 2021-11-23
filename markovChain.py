@@ -36,6 +36,10 @@ while True:
         # Receive socket message.
         resp = sock.recv(2048).decode('utf-8')
 
+        if len(resp) == 0:
+            print("Socket dead.")
+            break
+        
         # Keepalive code.
         if resp.startswith('PING'):
             sock.send("PONG\n".encode('utf-8'))
